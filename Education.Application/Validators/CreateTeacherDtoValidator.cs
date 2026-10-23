@@ -16,10 +16,10 @@ namespace Education.Application.Validators
                 .Length(2, 50);
 
             RuleFor(x => x.Age)
-                .InclusiveBetween(1, 120);
+                .InclusiveBetween(18, 120);
 
             RuleFor(x => x.Salary)
-                .GreaterThanOrEqualTo(0);
+                .GreaterThanOrEqualTo(1);
         }
     }
 }

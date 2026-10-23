@@ -66,8 +66,25 @@ namespace EducationSystem.Infrastructure.Repositories
 
         public void Delete(Teacher entity)
         {
+            _connection.Execute(@"DELETE FROM TeacherGroups WHERE TeacherId = @Id",
+                new { entity.Id }, transaction: _transaction);
+
             _connection.Execute(@"DELETE FROM Teachers
                             WHERE Id = @Id", new { entity.Id }, transaction: _transaction);
+        }
+
+        public void AddGroup(int teacherId, int groupId)
+        {
+            _connection.Execute(
+                "INSERT INTO TeacherGroups (TeacherId, GroupId) VALUES (@TeacherId, @GroupId)",
+                new { TeacherId = teacherId, GroupId = groupId }, transaction: _transaction);
+        }
+
+        public void RemoveGroup(int teacherId, int groupId)
+        {
+            _connection.Execute(
+                "DELETE FROM TeacherGroups WHERE TeacherId = @TeacherId AND GroupId = @GroupId",
+                new { TeacherId = teacherId, GroupId = groupId }, transaction: _transaction);
         }
 
         private void LoadGroups(IReadOnlyCollection<Teacher> teachers)

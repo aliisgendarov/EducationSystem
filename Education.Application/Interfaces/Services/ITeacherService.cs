@@ -13,5 +13,9 @@ namespace Education.Application.Interfaces.Services
         TeacherDto? Update(UpdateTeacherDto dto);
 
         bool Delete(int id);
+
+        bool AddToGroup(int teacherId, int groupId);
+
+        bool RemoveFromGroup(int teacherId, int groupId);
     }
 }

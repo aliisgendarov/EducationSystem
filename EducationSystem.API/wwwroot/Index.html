@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Təhsil sistemi</title>
+<style>
+:root{--ink:#1c2733;--mute:#5b6b7b;--line:#d9e0e7;--bg:#f2f5f8;--card:#fff;--accent:#1d5fa8;--ok:#1e7a46;--err:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 24px 0}
+h1{margin:0 0 10px;font-size:20px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:10px 16px;font:inherit;color:var(--mute);cursor:pointer;border-bottom:3px solid transparent}
+nav button.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+main{max-width:1000px;margin:20px auto;padding:0 16px}
+.bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+h2{margin:0;font-size:18px}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);width:100%}
+.tools input{width:130px}
+button{font:inherit;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--err);border-color:#e7c3c0}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#msg{padding:10px 14px;border-radius:6px;margin-bottom:14px}
+#msg.ok{background:#e4f4ea;color:var(--ok)}#msg.err{background:#fbe9e7;color:var(--err)}
+form{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px}
+form h3{margin:0 0 12px;font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.checks{grid-column:1/-1}.checks div{display:flex;gap:14px;flex-wrap:wrap}
+.checks label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:15px;margin:0}
+.checks input{width:auto}
+.actions{display:flex;gap:8px;margin-top:16px}
+.wrap{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:13px;color:var(--mute);font-weight:600;background:#f8fafc}
+tr:last-child td{border-bottom:0}
+td.act{text-align:right;display:flex;gap:6px;justify-content:flex-end}
+#empty{padding:22px;color:var(--mute);margin:0}
+</style>
+</head>
+<body>
+<header><h1>Təhsil sistemi</h1><nav id="tabs"></nav></header>
+<main>
+  <div id="msg" hidden></div>
+  <div class="bar">
+    <h2 id="title"></h2>
+    <div class="tools">
+      <input id="searchId" type="number" min="1" placeholder="Id ilə axtar">
+      <button id="btnFind">Axtar</button>
+      <button id="btnAll">Hamısını göstər</button>
+      <button id="btnNew" class="primary">Əlavə et</button>
+    </div>
+  </div>
+  <form id="form" hidden>
+    <h3 id="formTitle"></h3>
+    <div id="fields" class="grid"></div>
+    <div class="actions"><button class="primary" type="submit">Yadda saxla</button><button type="button" id="btnCancel">Ləğv et</button></div>
+  </form>
+  <div class="wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table><p id="empty" hidden>Heç bir qeyd yoxdur.</p></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cache = { groups: [], teachers: [] };
+const byId = (a, id) => a.find(x => x.id === id);
+const full = p => p ? p.name + ' ' + p.surname : '—';
+const person = [{k:'name',l:'Ad',t:'text'},{k:'surname',l:'Soyad',t:'text'},{k:'age',l:'Yaş',t:'number'}];
+const salary = {k:'salary',l:'Maaş',t:'number'};
+const gName = id => byId(cache.groups, id)?.name ?? id;
+
+const CFG = {
+  students: { title:'Tələbələr', one:'tələbə',
+    fields:[...person,{k:'groupId',l:'Qrup',t:'select',src:'groups',label:g=>g.name}],
+    cols:[['Ad',r=>r.name],['Soyad',r=>r.surname],['Yaş',r=>r.age],['Qrup',r=>gName(r.groupId)]] },
+  teachers: { title:'Müəllimlər', one:'müəllim', links:true,
+    fields:[...person,salary],
+    cols:[['Ad',r=>r.name],['Soyad',r=>r.surname],['Yaş',r=>r.age],['Maaş',r=>r.salary],['Qruplar',r=>r.groupIds.map(gName).join(', ')||'—']] },
+  managers: { title:'Menecerlər', one:'menecer',
+    fields:[...person,salary,{k:'teacherId',l:'Müəllim',t:'select',src:'teachers',label:full}],
+    cols:[['Ad',r=>r.name],['Soyad',r=>r.surname],['Yaş',r=>r.age],['Maaş',r=>r.salary],['Müəllim',r=>full(byId(cache.teachers,r.teacherId))]] },
+  groups: { title:'Qruplar', one:'qrup',
+    fields:[{k:'name',l:'Qrup adı',t:'text'}],
+    cols:[['Ad',r=>r.name],['Tələbə sayı',r=>r.studentIds.length],['Müəllimlər',r=>r.teacherIds.map(id=>full(byId(cache.teachers,id))).join(', ')||'—']] }
+};
+let cur = 'students', rows = [], editing = null;
+
+function msg(t, ok) {
+  const m = $('msg'); m.textContent = t; m.className = ok ? 'ok' : 'err'; m.hidden = !t;
+  if (ok && t) setTimeout(() => { if (m.textContent === t) m.hidden = true; }, 3500);
+}
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  if (r.ok) return r.status === 204 ? null : r.json();
+  const e = new Error({400:'Məlumatlar düzgün deyil.',404:'Qeyd tapılmadı.',409:'Bu əməliyyat başqa məlumatlarla əlaqəli olduğu üçün mümkün deyil (məsələn, qrupda tələbə var və ya seçilən qeyd mövcud deyil).'}[r.status] || 'Server xətası (' + r.status + ').');
+  e.status = r.status;
+  try { const p = await r.json(); if (p.errors) e.errors = p.errors; } catch {}
+  throw e;
+}
+function showErr(e) {
+  let t = e.message;
+  if (e.errors) {
+    const lab = Object.fromEntries(CFG[cur].fields.map(f => [f.k.toLowerCase(), f.l]));
+    t = Object.entries(e.errors).map(([k, v]) => (lab[k.toLowerCase()] || k) + ': ' + v.join(', ')).join(' | ');
+  }
+  msg(t, false);
+}
+const run = f => f().catch(showErr);
+
+async function refs() {
+  [cache.groups, cache.teachers] = await Promise.all([api('GET','/api/groups'), api('GET','/api/teachers')]);
+}
+async function load() { rows = await api('GET', '/api/' + cur); draw(); }
+
+function draw() {
+  const c = CFG[cur];
+  $('thead').innerHTML = '<tr><th>Id</th>' + c.cols.map(x => '<th>' + x[0] + '</th>').join('') + '<th></th></tr>';
+  $('tbody').innerHTML = rows.map(r => '<tr><td>' + r.id + '</td>' + c.cols.map(x => '<td>' + esc(x[1](r)) + '</td>').join('') +
+    '<td class="act"><button data-edit="' + r.id + '">Redaktə et</button><button class="danger" data-del="' + r.id + '">Sil</button></td></tr>').join('');
+  $('empty').hidden = rows.length > 0;
+}
+
+function openForm(row) {
+  editing = row; const c = CFG[cur];
+  $('formTitle').textContent = row ? 'Redaktə: ' + c.one + ' #' + row.id : 'Yeni ' + c.one;
+  let h = c.fields.map(f => {
+    const v = row ? row[f.k] : '';
+    if (f.t === 'select') {
+      return '<div><label for="f_' + f.k + '">' + f.l + '</label><select id="f_' + f.k + '"><option value="">Seçin…</option>' +
+        cache[f.src].map(o => '<option value="' + o.id + '"' + (o.id === v ? ' selected' : '') + '>' + esc(f.label(o)) + '</option>').join('') + '</select></div>';
+    }
+    return '<div><label for="f_' + f.k + '">' + f.l + '</label><input id="f_' + f.k + '" type="' + f.t + '"' + (f.t === 'number' ? ' step="any" min="0"' : '') + ' value="' + esc(v) + '"></div>';
+  }).join('');
+  if (c.links) {
+    const mine = row ? row.groupIds : [];
+    h += '<div class="checks"><label>Dərs dediyi qruplar</label><div>' + (cache.groups.map(g =>
+      '<label><input type="checkbox" class="gchk" value="' + g.id + '"' + (mine.includes(g.id) ? ' checked' : '') + '>' + esc(g.name) + '</label>').join('') || '<span>Əvvəlcə qrup əlavə edin.</span>') + '</div></div>';
+  }
+  $('fields').innerHTML = h; $('form').hidden = false; $('fields').querySelector('input,select').focus();
+}
+
+async function save(ev) {
+  ev.preventDefault();
+  const c = CFG[cur], body = {};
+  c.fields.forEach(f => {
+    const v = $('f_' + f.k).value;
+    body[f.k] = f.t === 'select' ? (parseInt(v) || 0) : f.t === 'number' ? (v === '' ? 0 : parseFloat(v)) : v;
+  });
+  const res = editing ? await api('PUT', '/api/' + cur + '/' + editing.id, body) : await api('POST', '/api/' + cur, body);
+  if (c.links) {
+    const old = editing ? editing.groupIds : [], want = [...document.querySelectorAll('.gchk:checked')].map(x => +x.value);
+    for (const g of want.filter(x => !old.includes(x))) await api('POST', '/api/teachers/' + res.id + '/groups/' + g);
+    for (const g of old.filter(x => !want.includes(x))) await api('DELETE', '/api/teachers/' + res.id + '/groups/' + g);
+  }
+  $('form').hidden = true;
+  await refs(); await load();
+  msg(editing ? 'Dəyişikliklər yadda saxlanıldı.' : 'Yeni ' + c.one + ' əlavə edildi.', true);
+}
+
+async function find() {
+  const id = $('searchId').value;
+  if (!id) return load();
+  try { rows = [await api('GET', '/api/' + cur + '/' + id)]; msg(''); }
+  catch (e) { if (e.status === 404) { rows = []; msg(id + ' nömrəli ' + CFG[cur].one + ' tapılmadı.', false); } else throw e; }
+  draw();
+}
+
+async function tab(k) {
+  cur = k; $('form').hidden = true; msg(''); $('searchId').value = '';
+  $('title').textContent = CFG[k].title;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  await refs(); await load();
+}
+
+$('tabs').innerHTML = Object.keys(CFG).map(k => '<button data-k="' + k + '">' + CFG[k].title + '</button>').join('');
+$('tabs').onclick = e => e.target.dataset.k && run(() => tab(e.target.dataset.k));
+$('btnNew').onclick = () => run(async () => { await refs(); openForm(null); });
+$('btnAll').onclick = () => { $('searchId').value = ''; run(async () => { msg(''); await load(); }); };
+$('btnFind').onclick = () => run(find);
+$('searchId').onkeydown = e => { if (e.key === 'Enter') run(find); };
+$('btnCancel').onclick = () => { $('form').hidden = true; };
+$('form').onsubmit = ev => run(() => save(ev));
+$('tbody').onclick = e => {
+  const ed = e.target.dataset.edit, del = e.target.dataset.del;
+  if (ed) run(async () => { await refs(); openForm(rows.find(r => r.id == ed)); });
+  if (del && confirm('Bu ' + CFG[cur].one + ' (#' + del + ') silinsin?')) run(async () => {
+    await api('DELETE', '/api/' + cur + '/' + del); await refs(); await load(); msg('Qeyd silindi.', true);
+  });
+};
+run(() => tab('students'));
+</script>
+</body>
+</html>

@@ -9,6 +9,7 @@ using Education.Application.Validators;
 using EducationSystem.Infrastructure.Data;
 using EducationSystem.Infrastructure.UnitOfWork;
 using FluentValidation;
+using EducationSystem.API.ExceptionHandling;
 
 namespace EducationSystem.API
 {
@@ -18,19 +19,22 @@ namespace EducationSystem.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-
             var connectionString = builder.Configuration.GetConnectionString("EducationSystem")
                 ?? throw new InvalidOperationException(
                     "Connection string 'EducationSystem' was not configured.");
 
+            // Infrastructure
             builder.Services.AddSingleton<IDbConnectionFactory>(
                 _ => new DbConnectionFactory(connectionString));
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Application services
             builder.Services.AddScoped<IStudentService, StudentService>();
             builder.Services.AddScoped<IGroupService, GroupService>();
             builder.Services.AddScoped<IManagerService, ManagerService>();
             builder.Services.AddScoped<ITeacherService, TeacherService>();
+
+            // Validators
             builder.Services.AddScoped<IValidator<CreateStudentDto>, CreateStudentDtoValidator>();
             builder.Services.AddScoped<IValidator<UpdateStudentDto>, UpdateStudentDtoValidator>();
             builder.Services.AddScoped<IValidator<CreateGroupDto>, CreateGroupDtoValidator>();
@@ -40,22 +44,30 @@ namespace EducationSystem.API
             builder.Services.AddScoped<IValidator<CreateTeacherDto>, CreateTeacherDtoValidator>();
             builder.Services.AddScoped<IValidator<UpdateTeacherDto>, UpdateTeacherDtoValidator>();
 
+            // API + Swagger
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            app.UseExceptionHandler();
+
             if (app.Environment.IsDevelopment())
             {
-                app.MapOpenApi();
+                app.UseSwagger();
+                app.UseSwaggerUI();
             }
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
 
+            app.UseAuthorization();
 
             app.MapControllers();
 

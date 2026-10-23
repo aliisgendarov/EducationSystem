@@ -91,6 +91,33 @@ namespace Education.Application.Services
             return true;
         }
 
+        public bool AddToGroup(int teacherId, int groupId)
+        {
+            if (_unitOfWork.TeacherRepository.GetById(teacherId) is null ||
+                _unitOfWork.GroupRepository.GetById(groupId) is null)
+            {
+                return false;
+            }
+
+            _unitOfWork.TeacherRepository.AddGroup(teacherId, groupId);
+            _unitOfWork.Commit();
+
+            return true;
+        }
+
+        public bool RemoveFromGroup(int teacherId, int groupId)
+        {
+            if (_unitOfWork.TeacherRepository.GetById(teacherId) is null)
+            {
+                return false;
+            }
+
+            _unitOfWork.TeacherRepository.RemoveGroup(teacherId, groupId);
+            _unitOfWork.Commit();
+
+            return true;
+        }
+
         private static void Validate<T>(IValidator<T> validator, T dto)
         {
             var result = validator.Validate(dto);

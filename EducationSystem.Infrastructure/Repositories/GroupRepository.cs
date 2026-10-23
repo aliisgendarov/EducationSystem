@@ -63,6 +63,9 @@ namespace EducationSystem.Infrastructure.Repositories
 
         public void Delete(Group entity)
         {
+            _connection.Execute(@"DELETE FROM TeacherGroups WHERE GroupId = @Id",
+                new { entity.Id }, transaction: _transaction);
+
             _connection.Execute(@"DELETE FROM Groups
                             WHERE Id = @Id", new { entity.Id }, transaction: _transaction);
         }
